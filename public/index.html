@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShieldMori — Threat Intelligence Scanner</title>
+  <meta name="description" content="Professional threat intelligence scanner powered by VirusTotal. Scan URLs, domains, IPs, file hashes and files with 70+ antivirus engines."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --paper:      #EDEAE3;
+      --paper-dark: #E4E1D9;
+      --ink:        #141414;
+      --ink-mid:    #3a3a3a;
+      --ink-dim:    #888;
+      --rule:       rgba(20,20,20,0.11);
+      --red:        #C9292B;
+      --red-dim:    rgba(201,41,43,0.08);
+      --red-bg:     #fde8e8;
+      --amber:      #C97006;
+      --amber-bg:   #fef3cd;
+      --green:      #1a7a4a;
+      --green-bg:   #d6f0e3;
+      --panel:      #FAFAF7;
+      --serif:      'Bricolage Grotesque', sans-serif;
+      --mono:       'IBM Plex Mono', monospace;
+      --sans:       'IBM Plex Sans', sans-serif;
+      --sidebar-w:  240px;
+      --topbar-h:   52px;
+      --radius:     8px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    html, body {
+      height: 100%; font-family: var(--sans);
+      background: var(--paper); color: var(--ink);
+      font-size: 14px; overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: var(--topbar-h) 1fr;
+      height: 100vh;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      grid-column: 1 / -1;
+      border-bottom: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px 0 0;
+      background: var(--paper);
+      position: relative; z-index: 10;
+    }
+
+    .topbar-brand {
+      display: flex; align-items: center;
+      width: var(--sidebar-w);
+      height: 100%;
+      padding: 0 22px;
+      border-right: 1px solid var(--rule);
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 30px; height: 30px;
+      background: var(--ink);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-family: var(--serif);
+      font-size: 17px; font-weight: 800;
+      letter-spacing: -0.6px; line-height: 1;
+    }
+    .brand-name em { color: var(--red); font-style: normal; }
+
+    .topbar-center {
+      flex: 1; display: flex; align-items: center; padding: 0 24px;
+    }
+
+    .breadcrumb {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+      letter-spacing: 0.04em;
+    }
+    .breadcrumb-sep { opacity: 0.35; }
+    .breadcrumb-active { color: var(--ink); font-weight: 500; }
+
+    .topbar-right {
+      display: flex; align-items: center; gap: 12px;
+      font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+    }
+    .topbar-right a {
+      color: var(--ink-dim); text-decoration: none;
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 5px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .topbar-right a:hover { color: var(--ink); border-color: var(--rule); background: var(--panel); }
+
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      animation: pulse-dot 2.5s ease infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 0 2px rgba(26,122,74,0.2); }
+      50%      { box-shadow: 0 0 0 5px rgba(26,122,74,0.08); }
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      border-right: 1px solid var(--rule);
+      background: var(--paper);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      padding: 16px 0;
+    }
+
+    .sidebar-section { padding: 0 12px; margin-bottom: 4px; }
+
+    .sidebar-label {
+      font-family: var(--mono); font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ink-dim); opacity: 0.6;
+      padding: 8px 8px 6px; display: block;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 9px 10px 9px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      border: none; background: transparent;
+      width: 100%; text-align: left;
+      position: relative;
+      transition: background 0.12s;
+      color: var(--ink-mid);
+      margin-bottom: 1px;
+    }
+
+    .nav-item:hover { background: rgba(20,20,20,0.05); color: var(--ink); }
+
+    .nav-item.active {
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 2.5px; border-radius: 0 2px 2px 0;
+      background: var(--red);
+      transform: translateX(-12px);
+    }
+
+    .nav-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      background: rgba(20,20,20,0.05);
+      transition: background 0.12s;
+    }
+
+    .nav-item.active .nav-icon { background: var(--ink); }
+    .nav-item.active .nav-icon svg { color: var(--paper); }
+    .nav-icon svg { color: var(--ink-dim); transition: color 0.12s; }
+    .nav-item:hover .nav-icon { background: rgba(20,20,20,0.08); }
+    .nav-item:hover .nav-icon svg { color: var(--ink); }
+
+    .nav-text { flex: 1; font-family: var(--mono); font-size: 12px; letter-spacing: 0.03em; font-weight: 500; }
+
+    .nav-badge {
+      font-family: var(--mono); font-size: 9px;
+      background: var(--red-dim); color: var(--red);
+      padding: 2px 6px; border-radius: 999px;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(201,41,43,0.15);
+    }
+
+    .sidebar-divider { border: none; border-top: 1px solid var(--rule); margin: 10px 12px; }
+
+    .sidebar-footer { margin-top: auto; padding: 12px 12px 0; border-top: 1px solid var(--rule); }
+
+    .sidebar-footer-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 6px;
+      font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+      text-decoration: none; transition: all 0.12s;
+    }
+    .sidebar-footer-item:hover { background: rgba(20,20,20,0.05); color: var(--ink); }
+
+    /* CONTENT */
+    .content {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL */
+    .left-panel {
+      border-right: 1px solid var(--rule);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule) transparent;
+    }
+
+    /* HOME */
+    .home-panel {
+      padding: 32px 28px;
+      display: flex; flex-direction: column; gap: 20px; flex: 1;
+    }
+
+    .home-header { padding-bottom: 20px; border-bottom: 1px solid var(--rule); }
+
+    .home-title {
+      font-family: var(--serif);
+      font-size: 26px; font-weight: 800;
+      letter-spacing: -1px; line-height: 1.1; margin-bottom: 8px;
+    }
+    .home-title em { color: var(--red); font-style: normal; }
+
+    .home-sub { font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
+
+    .scan-type-grid { display: flex; flex-direction: column; gap: 8px; }
+
+    .scan-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      cursor: pointer; transition: all 0.15s;
+      position: relative; overflow: hidden;
+    }
+
+    .scan-card::after {
+      content: ''; position: absolute; inset: 0;
+      background: var(--red-dim); opacity: 0; transition: opacity 0.15s;
+    }
+
+    .scan-card:hover {
+      border-color: rgba(201,41,43,0.3);
+      transform: translateX(3px);
+      box-shadow: var(--shadow-sm);
+    }
+    .scan-card:hover::after { opacity: 1; }
+
+    .scan-card-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(20,20,20,0.06);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; position: relative; z-index: 1;
+      transition: background 0.15s;
+    }
+
+    .scan-card:hover .scan-card-icon { background: var(--red); }
+    .scan-card:hover .scan-card-icon svg { color: #fff; }
+    .scan-card-icon svg { color: var(--ink-mid); transition: color 0.15s; }
+
+    .scan-card-body { flex: 1; position: relative; z-index: 1; }
+
+    .scan-card-title { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+    .scan-card-desc { font-size: 11px; color: var(--ink-dim); line-height: 1.4; }
+
+    .scan-card-arrow { position: relative; z-index: 1; color: var(--ink-dim); transition: all 0.15s; }
+    .scan-card:hover .scan-card-arrow { color: var(--red); transform: translateX(3px); }
+
+    /* SCAN PANEL */
+    .scan-panel {
+      padding: 28px;
+      display: flex; flex-direction: column; gap: 18px; flex: 1;
+    }
+
+    .scan-panel-header {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 18px; border-bottom: 1px solid var(--rule);
+    }
+
+    .scan-panel-icon {
+      width: 38px; height: 38px; border-radius: 9px;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .scan-panel-icon svg { color: var(--paper); }
+
+    .scan-panel-title { font-family: var(--serif); font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 3px; }
+    .scan-panel-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); letter-spacing: 0.05em; }
+
+    .field-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--ink-dim); margin-bottom: 7px; display: block;
+    }
+
+    .scan-input {
+      width: 100%; font-family: var(--mono); font-size: 13px;
+      padding: 12px 14px; border: 1px solid rgba(20,20,20,0.2); border-radius: 7px;
+      background: var(--panel); color: var(--ink); outline: none;
+      transition: all 0.15s; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .scan-input::placeholder { color: var(--ink-dim); opacity: 0.6; }
+    .scan-input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(20,20,20,0.08), inset 0 1px 2px rgba(0,0,0,0.04); }
+
+    /* Dropzone */
+    .dropzone {
+      border: 1.5px dashed rgba(20,20,20,0.2); border-radius: 10px;
+      background: var(--panel); padding: 32px 20px;
+      text-align: center; cursor: pointer; transition: all 0.2s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--red); background: var(--red-bg); }
+    .dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    .dropzone-icon-wrap {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: rgba(20,20,20,0.06);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px; transition: all 0.2s;
+    }
+    .dropzone:hover .dropzone-icon-wrap { background: var(--red); }
+    .dropzone:hover .dropzone-icon-wrap svg { color: #fff; }
+    .dropzone-icon-wrap svg { color: var(--ink-mid); transition: color 0.2s; }
+
+    .dropzone-label { font-family: var(--mono); font-size: 12px; color: var(--ink-mid); line-height: 1.7; }
+    .dropzone-label strong { color: var(--ink); }
+    .dropzone-types { font-size: 11px; color: var(--ink-dim); margin-top: 6px; font-family: var(--mono); }
+
+    .file-preview {
+      display: none; align-items: center; gap: 12px;
+      background: var(--green-bg); border: 1px solid #9fd6bb;
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .file-preview.visible { display: flex; }
+    .file-preview-icon {
+      width: 32px; height: 32px; background: rgba(26,122,74,0.15); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .file-preview-icon svg { color: var(--green); }
+    .file-preview-name { font-family: var(--mono); font-size: 12px; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-preview-size { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); flex-shrink: 0; }
+    .file-remove {
+      background: none; border: none; cursor: pointer;
+      color: var(--ink-dim); font-size: 14px;
+      padding: 4px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s; flex-shrink: 0;
+    }
+    .file-remove:hover { background: rgba(201,41,43,0.1); color: var(--red); }
+
+    /* Scan button */
+    .scan-btn {
+      width: 100%; padding: 14px;
+      background: var(--ink); color: var(--paper);
+      border: none; border-radius: 7px;
+      font-family: var(--mono); font-size: 13px; font-weight: 500;
+      letter-spacing: 0.04em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      transition: all 0.15s;
+      position: relative; overflow: hidden;
+    }
+
+    .scan-btn::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+      background: var(--red); transition: width 0.25s ease; z-index: 0;
+    }
+
+    .scan-btn:hover::before { width: 100%; }
+    .scan-btn span, .scan-btn svg { position: relative; z-index: 1; }
+    .scan-btn:active { transform: scale(0.98); }
+    .scan-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .scan-btn:disabled::before { display: none; }
+
+    .size-note {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--ink-dim); text-align: center; line-height: 1.5;
+    }
+
+    /* Terminal */
+    .terminal {
+      background: #141414; border-radius: 9px;
+      overflow: hidden; display: flex; flex-direction: column;
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: var(--shadow-md);
+    }
+
+    .terminal-bar {
+      background: #1e1e1e; padding: 9px 14px;
+      display: flex; align-items: center; gap: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    .terminal-title { font-family: var(--mono); font-size: 10px; color: #555; margin-left: 8px; }
+
+    .terminal-body {
+      padding: 14px 16px; min-height: 100px; max-height: 160px;
+      overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2a2a2a transparent;
+    }
+
+    .log-line { font-family: var(--mono); font-size: 11.5px; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+    .log-line.dim  { color: #3a3a3a; } .log-line.info { color: #5b9cf6; }
+    .log-line.ok   { color: #28c840; } .log-line.warn { color: #febc2e; }
+    .log-line.err  { color: #ff5f57; } .log-line.norm { color: #888; }
+
+    /* RIGHT PANEL */
+    .right-panel {
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+      background: var(--paper);
+    }
+
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; padding: 40px; text-align: center;
+    }
+
+    .empty-illus {
+      width: 80px; height: 80px; border-radius: 20px;
+      background: rgba(20,20,20,0.05);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+    }
+
+    .empty-title { font-family: var(--serif); font-size: 22px; font-weight: 800; letter-spacing: -0.8px; }
+    .empty-sub { font-size: 13px; max-width: 280px; line-height: 1.65; color: var(--ink-dim); }
+
+    /* RESULTS */
+    .results-wrap { display: flex; flex-direction: column; padding: 32px 36px; }
+
+    .gauge-section {
+      display: flex; align-items: center; gap: 28px;
+      padding-bottom: 28px; margin-bottom: 28px;
+      border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+    }
+
+    .gauge-svg { width: 130px; height: 74px; display: block; flex-shrink: 0; }
+
+    .gauge-info { flex: 1; min-width: 180px; }
+
+    .gauge-verdict { font-family: var(--serif); font-size: 32px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; margin-bottom: 6px; }
+    .gauge-verdict.clean  { color: var(--green); }
+    .gauge-verdict.threat { color: var(--red); }
+    .gauge-verdict.warn   { color: var(--amber); }
+
+    .gauge-sub { font-size: 13px; color: var(--ink-mid); line-height: 1.5; margin-bottom: 16px; }
+
+    .counts-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .count-chip {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 9px 14px; border: 1px solid var(--rule);
+      border-radius: 7px; min-width: 64px; background: var(--panel);
+    }
+    .count-chip .n { font-family: var(--mono); font-size: 18px; font-weight: 500; line-height: 1; }
+    .count-chip .l { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); margin-top: 4px; }
+    .count-chip.c-red   { border-color: rgba(201,41,43,0.3);  background: var(--red-bg);   } .count-chip.c-red .n   { color: var(--red); }
+    .count-chip.c-amber { border-color: rgba(201,112,6,0.3);  background: var(--amber-bg); } .count-chip.c-amber .n { color: var(--amber); }
+    .count-chip.c-green { border-color: rgba(26,122,74,0.3);  background: var(--green-bg); } .count-chip.c-green .n { color: var(--green); }
+
+    .result-section { margin-bottom: 28px; }
+
+    .section-heading {
+      font-family: var(--mono); font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ink-dim); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-heading::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 8px; }
+
+    .meta-item { background: var(--panel); border: 1px solid var(--rule); border-radius: 7px; padding: 11px 13px; }
+    .meta-key { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 5px; }
+    .meta-val { font-family: var(--mono); font-size: 12px; color: var(--ink); word-break: break-all; line-height: 1.5; }
+
+    .engines-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+
+    .filter-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+
+    .fpill {
+      font-family: var(--mono); font-size: 10px;
+      padding: 5px 11px; border-radius: 999px;
+      border: 1px solid var(--rule);
+      background: var(--panel); color: var(--ink-dim);
+      cursor: pointer; transition: all 0.12s; letter-spacing: 0.03em;
+    }
+    .fpill:hover { border-color: rgba(20,20,20,0.3); color: var(--ink); }
+    .fpill.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .fpill.fp-red.active  { background: var(--red);   border-color: var(--red);   }
+    .fpill.fp-green.active { background: var(--green); border-color: var(--green); }
+
+    .engine-list { display: flex; flex-direction: column; gap: 1px; }
+
+    .engine-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 6px; transition: background 0.1s; }
+    .engine-row:hover { background: rgba(20,20,20,0.04); }
+
+    .eng-name { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+    .eng-detect { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); text-align: right; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eng-badge { font-family: var(--mono); font-size: 9px; font-weight: 500; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em; white-space: nowrap; }
+    .eng-badge.b-mal  { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(201,41,43,0.25); }
+    .eng-badge.b-sus  { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(201,112,6,0.25); }
+    .eng-badge.b-ok   { background: var(--green-bg); color: var(--green); border: 1px solid rgba(26,122,74,0.25); }
+    .eng-badge.b-none { background: #f0f0f0; color: var(--ink-dim); border: 1px solid #ddd; }
+
+    .show-more { width: 100%; margin-top: 10px; padding: 10px; background: none; border: 1px dashed var(--rule); border-radius: 7px; font-family: var(--mono); font-size: 11px; color: var(--ink-dim); cursor: pointer; transition: all 0.15s; }
+    .show-more:hover { border-color: var(--ink); color: var(--ink); }
+
+    .err-banner { background: var(--red-bg); border: 1px solid rgba(201,41,43,0.25); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 12px; color: var(--red); display: flex; gap: 10px; align-items: flex-start; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
+
+    @keyframes slide-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: slide-in 0.2s ease forwards; }
+
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 56px; }
+      .nav-text, .nav-badge, .sidebar-label, .brand-name { display: none; }
+      .nav-item { padding: 8px; justify-content: center; }
+      .nav-item.active::before { display: none; }
+      .topbar-brand { justify-content: center; padding: 0; }
+      .content { grid-template-columns: 300px 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: var(--topbar-h) auto 1fr; }
+      .sidebar { display: none; }
+      .content { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="brand-name">Shield<em>.</em>Mori</div>
+    </div>
+
+    <div class="topbar-center">
+      <div class="breadcrumb">
+        <span>ShieldMori</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-active" id="breadcrumb-active">Home</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <span><span class="status-dot"></span>&nbsp;API Live</span>
+      <a href="https://github.com/YukiiKazunomiya" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        @YukiiKazunomiya
+      </a>
+      <a href="https://www.virustotal.com" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        VirusTotal
+      </a>
+    </div>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <button class="nav-item active" data-tab="home" onclick="switchTab('home',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <span class="nav-text">Home</span>
+      </button>
+    </div>
+
+    <hr class="sidebar-divider"/>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Scan Target</span>
+
+      <button class="nav-item" data-tab="url" onclick="switchTab('url',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07L11.75 5.5"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+        <span class="nav-text">URL</span>
+      </button>
+
+      <button class="nav-item" data-tab="domain" onclick="switchTab('domain',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+          </svg>
+        </div>
+        <span class="nav-text">Domain</span>
+      </button>
+
+      <button class="nav-item" data-tab="ip" onclick="switchTab('ip',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <span class="nav-text">IP Address</span>
+      </button>
+
+      <button class="nav-item" data-tab="hash" onclick="switchTab('hash',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>
+          </svg>
+        </div>
+        <span class="nav-text">File Hash</span>
+      </button>
+
+      <button class="nav-item" data-tab="file" onclick="switchTab('file',this)">
+        <div class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <span class="nav-text">File Upload</span>
+        <span class="nav-badge">32MB</span>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <a class="sidebar-footer-item" href="https://www.virustotal.com" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span>VirusTotal API</span>
+      </a>
+      <a class="sidebar-footer-item" href="https://github.com/YukiiKazunomiya" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>@YukiiKazunomiya</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="content">
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel" id="leftPanel">
+
+      <!-- HOME -->
+      <div id="pane-home" class="home-panel animate-in" style="display:flex">
+        <div class="home-header">
+          <div class="home-title">Threat<br>Intel<em>.</em></div>
+          <p class="home-sub">Professional scanner powered by 70+ antivirus engines. Choose a scan type to get started.</p>
+        </div>
+        <div class="scan-type-grid">
+
+          <div class="scan-card" onclick="switchTab('url', document.querySelector('[data-tab=url]'))" role="button" tabindex="0">
+            <div class="scan-card-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07L11.75 5.5"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <div class="scan-card-body">
+              <div class="scan-card-title">Scan URL</div>
+              <div class="scan-card-desc">Check links for malware, phishing &amp; redirects</div>
+            </div>
+            <div class="scan-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <div class="scan-card" onclick="switchTab('domain', document.querySelector('[data-tab=domain]'))" role="button" tabindex="0">
+            <div class="scan-card-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            </div>
+            <div class="scan-card-body">
+              <div class="scan-card-title">Scan Domain</div>
+              <div class="scan-card-desc">Analyze domain reputation &amp; threat history</div>
+            </div>
+            <div class="scan-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <div class="scan-card" onclick="switchTab('ip', document.querySelector('[data-tab=ip]'))" role="button" tabindex="0">
+            <div class="scan-card-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="scan-card-body">
+              <div class="scan-card-title">Scan IP Address</div>
+              <div class="scan-card-desc">Investigate geolocation, ISP &amp; threat data</div>
+            </div>
+            <div class="scan-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <div class="scan-card" onclick="switchTab('hash', document.querySelector('[data-tab=hash]'))" role="button" tabindex="0">
+            <div class="scan-card-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+            </div>
+            <div class="scan-card-body">
+              <div class="scan-card-title">Scan File Hash</div>
+              <div class="scan-card-desc">MD5, SHA-1 &amp; SHA-256 VT database lookup</div>
+            </div>
+            <div class="scan-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <div class="scan-card" onclick="switchTab('file', document.querySelector('[data-tab=file]'))" role="button" tabindex="0">
+            <div class="scan-card-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="scan-card-body">
+              <div class="scan-card-title">Upload File</div>
+              <div class="scan-card-desc">Submit any file up to 32MB for deep analysis</div>
+            </div>
+            <div class="scan-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- URL -->
+      <div id="pane-url" class="scan-panel" style="display:none">
+        <div class="scan-panel-header">
+          <div class="scan-panel-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07L11.75 5.5"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <div><div class="scan-panel-title">URL</div><div class="scan-panel-sub">Phishing · Malware · Redirect detection</div></div>
+        </div>
+        <div><label class="field-label" for="input-url">Target URL</label>
+        <input class="scan-input" id="input-url" type="text" placeholder="https://example.com/path" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/></div>
+        <button class="scan-btn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Analyze URL</span>
+        </button>
+        <div class="terminal"><div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">scan log</span></div><div class="terminal-body" id="termBody-url"><div class="log-line dim">$ shieldmori init — ready</div></div></div>
+      </div>
+
+      <!-- DOMAIN -->
+      <div id="pane-domain" class="scan-panel" style="display:none">
+        <div class="scan-panel-header">
+          <div class="scan-panel-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
+          <div><div class="scan-panel-title">Domain</div><div class="scan-panel-sub">Reputation · History · DNS records</div></div>
+        </div>
+        <div><label class="field-label" for="input-domain">Target Domain</label>
+        <input class="scan-input" id="input-domain" type="text" placeholder="example.com" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/></div>
+        <button class="scan-btn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Analyze Domain</span>
+        </button>
+        <div class="terminal"><div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">scan log</span></div><div class="terminal-body" id="termBody-domain"><div class="log-line dim">$ shieldmori init — ready</div></div></div>
+      </div>
+
+      <!-- IP -->
+      <div id="pane-ip" class="scan-panel" style="display:none">
+        <div class="scan-panel-header">
+          <div class="scan-panel-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div><div class="scan-panel-title">IP Address</div><div class="scan-panel-sub">Geolocation · ISP · Threat history</div></div>
+        </div>
+        <div><label class="field-label" for="input-ip">Target IP</label>
+        <input class="scan-input" id="input-ip" type="text" placeholder="8.8.8.8 or 2001:4860:4860::8888" autocomplete="off"/></div>
+        <button class="scan-btn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Analyze IP</span>
+        </button>
+        <div class="terminal"><div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">scan log</span></div><div class="terminal-body" id="termBody-ip"><div class="log-line dim">$ shieldmori init — ready</div></div></div>
+      </div>
+
+      <!-- HASH -->
+      <div id="pane-hash" class="scan-panel" style="display:none">
+        <div class="scan-panel-header">
+          <div class="scan-panel-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+          </div>
+          <div><div class="scan-panel-title">File Hash</div><div class="scan-panel-sub">MD5 · SHA-1 · SHA-256 lookup</div></div>
+        </div>
+        <div><label class="field-label" for="input-hash">Hash Value</label>
+        <input class="scan-input" id="input-hash" type="text" placeholder="e.g. 44d88612fea8a8f36de82e1278abb02f" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/></div>
+        <button class="scan-btn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Analyze Hash</span>
+        </button>
+        <div class="terminal"><div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">scan log</span></div><div class="terminal-body" id="termBody-hash"><div class="log-line dim">$ shieldmori init — ready</div></div></div>
+      </div>
+
+      <!-- FILE -->
+      <div id="pane-file" class="scan-panel" style="display:none">
+        <div class="scan-panel-header">
+          <div class="scan-panel-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div><div class="scan-panel-title">File Upload</div><div class="scan-panel-sub">70+ engines · Deep analysis · Max 32MB</div></div>
+        </div>
+        <div>
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept="*/*"/>
+            <div class="dropzone-icon-wrap">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="dropzone-label"><strong>Drop file here</strong><br>or click to browse</div>
+            <div class="dropzone-types">.exe · .dll · .apk · .zip · .pdf · and more</div>
+          </div>
+          <div class="file-preview" id="filePreview">
+            <div class="file-preview-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <span class="file-preview-name" id="fileName">—</span>
+            <span class="file-preview-size" id="fileSize">—</span>
+            <button class="file-remove" onclick="clearFile()" title="Remove">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="scan-btn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Analyze File</span>
+        </button>
+        <div class="size-note">Max 32 MB · Files are not stored on server</div>
+        <div class="terminal"><div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">scan log</span></div><div class="terminal-body" id="termBody-file"><div class="log-line dim">$ shieldmori init — ready</div></div></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel" id="rightPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-illus">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-dim)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="empty-title">No Results Yet</div>
+        <p class="empty-sub">Pick a scan type from the sidebar, enter your target, and hit Analyze.</p>
+      </div>
+      <div class="results-wrap" id="resultsWrap" style="display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let activeTab = "home";
+  let allEngines = [];
+  let engFilter = "all";
+  let showAllEng = false;
+  let selectedFile = null;
+  const PAGE = 20;
+
+  const tabMeta = {
+    home: "Home", url: "Scan URL", domain: "Scan Domain",
+    ip: "Scan IP Address", hash: "Scan File Hash", file: "File Upload"
+  };
+
+  const btnLabels = {
+    url: "Analyze URL", domain: "Analyze Domain",
+    ip: "Analyze IP", hash: "Analyze Hash", file: "Analyze File"
+  };
+
+  function switchTab(tab, el) {
+    document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+    if (el) el.classList.add("active");
+
+    ["home","url","domain","ip","hash","file"].forEach(t => {
+      const p = document.getElementById("pane-" + t);
+      if (p) { p.style.display = "none"; }
+    });
+
+    const pane = document.getElementById("pane-" + tab);
+    if (pane) {
+      pane.style.display = "flex";
+      pane.style.flexDirection = "column";
+      pane.classList.remove("animate-in");
+      void pane.offsetWidth; // reflow
+      pane.classList.add("animate-in");
+    }
+
+    activeTab = tab;
+    document.getElementById("breadcrumb-active").textContent = tabMeta[tab] || tab;
+  }
+
+  ["url","domain","ip","hash"].forEach(t => {
+    const el = document.getElementById("input-" + t);
+    if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") startScan(); });
+  });
+
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+
+  dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("drag"); });
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+  dropzone.addEventListener("drop", e => {
+    e.preventDefault(); dropzone.classList.remove("drag");
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  });
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(f) {
+    selectedFile = f;
+    document.getElementById("fileName").textContent = f.name;
+    document.getElementById("fileSize").textContent = fmtBytes(f.size);
+    document.getElementById("filePreview").classList.add("visible");
+    dropzone.style.display = "none";
+  }
+
+  function clearFile() {
+    selectedFile = null; fileInput.value = "";
+    document.getElementById("filePreview").classList.remove("visible");
+    dropzone.style.display = "block";
+  }
+
+  function getTermBody() {
+    const t = activeTab === "home" ? "url" : activeTab;
+    return document.getElementById("termBody-" + t);
+  }
+
+  function log(msg, cls = "norm") {
+    const body = getTermBody();
+    if (!body) return;
+    const line = document.createElement("div");
+    line.className = "log-line " + cls;
+    line.textContent = msg;
+    body.appendChild(line);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function clearLog() {
+    const body = getTermBody();
+    if (body) body.innerHTML = "";
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function startScan() {
+    if (activeTab === "home") return;
+
+    const activePaneEl = document.getElementById("pane-" + activeTab);
+    const btn = activePaneEl ? activePaneEl.querySelector(".scan-btn") : null;
+
+    if (activeTab === "file") {
+      if (!selectedFile) { log("✗ No file selected.", "err"); return; }
+      if (selectedFile.size > 32 * 1024 * 1024) { log("✗ File exceeds 32MB limit.", "err"); return; }
+    } else {
+      const val = document.getElementById("input-" + activeTab)?.value.trim();
+      if (!val) { document.getElementById("input-" + activeTab)?.focus(); return; }
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner">⟳</span> <span>Analyzing...</span>`;
+    }
+
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("resultsWrap").style.display = "none";
+    clearLog();
+
+    try {
+      let data;
+
+      if (activeTab === "file") {
+        log(`$ shieldmori scan --type=file`, "dim");
+        log(`  file : ${selectedFile.name}`, "dim");
+        log(`  size : ${fmtBytes(selectedFile.size)}`, "dim");
+        log("");
+        log("[ 1/5 ] Reading file...", "info");
+
+        const buffer = await selectedFile.arrayBuffer();
+        const hashBuf = await crypto.subtle.digest("SHA-256", buffer);
+        const sha256 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,"0")).join("");
+        log(`[ 2/5 ] SHA-256: ${sha256.slice(0,20)}...`, "info");
+
+        log("[ 3/5 ] Checking VT database...", "info");
+        const hashRes  = await fetch(`/api/scan?type=hash&value=${encodeURIComponent(sha256)}`);
+        const hashData = await hashRes.json();
+
+        if (hashRes.ok && hashData.success) {
+          log("[ 4/5 ] Found in cache — fetching...", "info");
+          await delay(300);
+          log("[ 5/5 ] Complete.", "ok");
+          data = hashData;
+        } else {
+          log("[ 3/5 ] Not cached — uploading file...", "info");
+          const form = new FormData();
+          form.append("file", selectedFile);
+          const upRes  = await fetch("/api/scan-file", { method: "POST", body: form });
+          const upData = await upRes.json();
+          if (!upRes.ok || upData.error) throw new Error(upData.error || "Upload failed.");
+
+          log("[ 4/5 ] Analyzing with 70+ engines...", "info");
+          for (let i = 0; i < 12; i++) {
+            await delay(5000);
+            const pollRes  = await fetch(`/api/scan?type=hash&value=${encodeURIComponent(sha256)}`);
+            const pollData = await pollRes.json();
+            if (pollRes.ok && pollData.success) {
+              log("[ 5/5 ] Results ready.", "ok");
+              data = pollData; break;
+            }
+            log(`  ⏱ Waiting... (${(i+1)*5}s)`, "dim");
+          }
+          if (!data) throw new Error("Analysis timed out. Try again in a minute.");
+        }
+      } else {
+        const val = document.getElementById("input-" + activeTab).value.trim();
+        log(`$ shieldmori scan --type=${activeTab}`, "dim");
+        log(`  target : ${val}`, "dim");
+        log("");
+        log("[ 1/4 ] Connecting to VirusTotal...", "info");
+        await delay(300);
+        log("[ 2/4 ] Submitting target...", "info");
+        const res = await fetch(`/api/scan?type=${encodeURIComponent(activeTab)}&value=${encodeURIComponent(val)}`);
+        await delay(300);
+        log("[ 3/4 ] Processing 70+ engines...", "info");
+        data = await res.json();
+        await delay(200);
+        if (!res.ok || data.error) throw new Error(data.error || "Unexpected error.");
+        log("[ 4/4 ] Fetching results...", "info");
+        await delay(200);
+      }
+
+      const r = data.result;
+      const stats = r.stats || {};
+      const mal = (stats.malicious || 0) + (stats.suspicious || 0);
+      const total = r.engines?.length || 0;
+      log("");
+      log(`✓ Complete — ${mal}/${total} engines flagged.`, "ok");
+      if (mal === 0)    log("  Verdict: CLEAN", "ok");
+      else if (mal < 5) log("  Verdict: SUSPICIOUS", "warn");
+      else              log("  Verdict: MALICIOUS", "err");
+
+      renderResults(r);
+
+    } catch (err) {
+      log(""); log(`✗ ${err.message}`, "err");
+      showError(err.message);
+    }
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>${btnLabels[activeTab] || "Analyze"}</span>`;
+    }
+  }
+
+  function showError(msg) {
+    const w = document.getElementById("resultsWrap");
+    w.innerHTML = `<div class="err-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${esc(msg)}</span></div>`;
+    w.style.display = "flex";
+    w.style.flexDirection = "column";
+    w.style.padding = "32px 36px";
+  }
+
+  function renderResults(r) {
+    allEngines = r.engines || [];
+    engFilter = "all"; showAllEng = false;
+
+    const stats = r.stats || {};
+    const malicious  = stats.malicious  || 0;
+    const suspicious = stats.suspicious || 0;
+    const undetected = (stats.undetected || 0) + (stats.harmless || 0);
+    const timeout    = stats.timeout    || 0;
+    const flagged    = malicious + suspicious;
+    const total      = allEngines.length;
+
+    const verdict     = flagged >= 5 ? "threat" : flagged > 0 ? "warn" : "clean";
+    const verdictText = { clean: "Clean", threat: "Malicious", warn: "Suspicious" }[verdict];
+    const verdictSub  = verdict === "clean"
+      ? `All ${total} engines returned no detections.`
+      : `${flagged} of ${total} engines flagged this target.`;
+
+    const ratio    = total > 0 ? flagged / total : 0;
+    const arcColor = { clean: "#1a7a4a", threat: "#C9292B", warn: "#C97006" }[verdict];
+    const arcLen   = 188;
+    const arcDash  = Math.round(ratio * arcLen);
+
+    let metaHtml = "";
+    if (r.name)         metaHtml += mc("Name",          r.name);
+    if (r.sha256)       metaHtml += mc("SHA-256",        r.sha256);
+    if (r.md5)          metaHtml += mc("MD5",            r.md5);
+    if (r.size)         metaHtml += mc("Size",           fmtBytes(r.size));
+    if (r.lastAnalysis) metaHtml += mc("Last Analyzed",  new Date(r.lastAnalysis).toLocaleString());
+    if (r.reputation != null) metaHtml += mc("Community Score", r.reputation > 0 ? `+${r.reputation}` : String(r.reputation));
+
+    const w = document.getElementById("resultsWrap");
+    w.style.display = "flex";
+    w.style.flexDirection = "column";
+    w.style.padding = "";
+    w.innerHTML = `
+      <div class="gauge-section animate-in">
+        <svg class="gauge-svg" viewBox="0 0 130 74" fill="none">
+          <path d="M8 66 A57 57 0 0 1 122 66" stroke="#e4e1d9" stroke-width="8" stroke-linecap="round"/>
+          <path d="M8 66 A57 57 0 0 1 122 66" stroke="${arcColor}" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="${arcDash} ${arcLen}" style="transition:stroke-dasharray 0.8s ease"/>
+          <text x="65" y="56" text-anchor="middle" font-family="'IBM Plex Mono'" font-size="16" font-weight="500" fill="${arcColor}">${total>0?Math.round(ratio*100):0}%</text>
+          <text x="65" y="68" text-anchor="middle" font-family="'IBM Plex Mono'" font-size="6" fill="#999" letter-spacing="1.5">DETECTED</text>
+        </svg>
+        <div class="gauge-info">
+          <div class="gauge-verdict ${verdict}">${verdictText}</div>
+          <div class="gauge-sub">${verdictSub}</div>
+          <div class="counts-row">
+            ${malicious  ? `<div class="count-chip c-red"><span class="n">${malicious}</span><span class="l">Malicious</span></div>` : ""}
+            ${suspicious ? `<div class="count-chip c-amber"><span class="n">${suspicious}</span><span class="l">Suspicious</span></div>` : ""}
+            <div class="count-chip c-green"><span class="n">${undetected}</span><span class="l">Clean</span></div>
+            ${timeout    ? `<div class="count-chip"><span class="n">${timeout}</span><span class="l">Timeout</span></div>` : ""}
+          </div>
+        </div>
+      </div>
+
+      ${metaHtml ? `<div class="result-section animate-in"><div class="section-heading">Target Details</div><div class="meta-grid">${metaHtml}</div></div>` : ""}
+
+      <div class="result-section animate-in">
+        <div class="engines-head">
+          <div class="section-heading" style="flex:1;margin:0">Engine Results <span style="color:var(--ink-dim);font-weight:400">(${total})</span></div>
+          <div class="filter-pills">
+            <button class="fpill active" onclick="filterEng('all',this)">All</button>
+            ${flagged ? `<button class="fpill fp-red" onclick="filterEng('flagged',this)">Flagged (${flagged})</button>` : ""}
+            <button class="fpill fp-green" onclick="filterEng('clean',this)">Clean (${undetected})</button>
+          </div>
+        </div>
+        <div class="engine-list" id="engineList"></div>
+        <button class="show-more" id="showMoreBtn" onclick="toggleShowAll()" style="display:none"></button>
+      </div>`;
+
+    renderEngines();
+    document.getElementById("rightPanel").scrollTop = 0;
+  }
+
+  function renderEngines() {
+    let list = allEngines;
+    if (engFilter === "flagged") list = allEngines.filter(e => e.category === "malicious" || e.category === "suspicious");
+    else if (engFilter === "clean") list = allEngines.filter(e => e.category === "undetected" || e.category === "harmless");
+    const shown = showAllEng ? list : list.slice(0, PAGE);
+    document.getElementById("engineList").innerHTML = shown.map(e => `
+      <div class="engine-row">
+        <span class="eng-name">${esc(e.engine)}</span>
+        <span class="eng-detect">${e.result ? esc(e.result) : ""}</span>
+        ${engBadge(e.category)}
+      </div>`).join("");
+    const btn = document.getElementById("showMoreBtn");
+    if (list.length > PAGE) {
+      btn.style.display = "block";
+      btn.textContent = showAllEng ? "Show fewer results" : `Show all ${list.length} engines`;
+    } else { btn.style.display = "none"; }
+  }
+
+  function filterEng(f, el) {
+    engFilter = f; showAllEng = false;
+    document.querySelectorAll(".fpill").forEach(b => b.classList.remove("active"));
+    el.classList.add("active");
+    renderEngines();
+  }
+
+  function toggleShowAll() { showAllEng = !showAllEng; renderEngines(); }
+
+  function engBadge(cat) {
+    if (cat === "malicious")  return `<span class="eng-badge b-mal">Malicious</span>`;
+    if (cat === "suspicious") return `<span class="eng-badge b-sus">Suspicious</span>`;
+    if (cat === "undetected" || cat === "harmless") return `<span class="eng-badge b-ok">Clean</span>`;
+    return `<span class="eng-badge b-none">${esc(cat||"N/A")}</span>`;
+  }
+
+  function mc(k, v) {
+    return `<div class="meta-item"><div class="meta-key">${esc(k)}</div><div class="meta-val">${esc(v)}</div></div>`;
+  }
+
+  function fmtBytes(b) {
+    if (!b) return "—";
+    if (b < 1024) return b + " B";
+    if (b < 1048576) return (b/1024).toFixed(1) + " KB";
+    return (b/1048576).toFixed(1) + " MB";
+  }
+
+  function esc(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+</script>
+</body>
+</html>
