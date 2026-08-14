@@ -1,0 +1,7 @@
+{
+  "name": "shieldmori",
+  "version": "1.0.0",
+  "description": "ShieldMori — Threat Intelligence Scanner by @YukiKazunomiya",
+  "private": true,
+  "engines": { "node": ">=18" }
+}
