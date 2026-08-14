@@ -217,5 +217,5 @@ MIT © [YukiiKazunomiya](https://github.com/YukiiKazunomiya)
 ---
 
 <div align="center">
-  <sub>Built with ♥ · Powered by <a href="https://www.virustotal.com">VirusTotal</a></sub>
+  <sub>Built Powered by <a href="https://www.virustotal.com">VirusTotal</a></sub>
 </div>
